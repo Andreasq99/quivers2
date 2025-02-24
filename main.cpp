@@ -61,8 +61,9 @@ int main(){
     Quiver<5> q(adj,rows);
     q.printAdjMat();
     q.printIndex();
-    // Quiver<5> p = q.deleteEdge(4);
-    // p.printAdjMat();
+    Quiver<5> p = q.deleteEdge(4);
+    p.printIndex();
+    p.printAdjMat();
     // Quiver<4> r = p.modEdge(6);
     // r.printAdjMat();
     // r->displayQuiver();

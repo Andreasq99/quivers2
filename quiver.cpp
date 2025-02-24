@@ -4,8 +4,10 @@
 #include <unordered_map>
 #include <assert.h>
 #include <iostream>
+#include <utility>
 
 typedef std::unordered_map<int, std::pair<int,int>> index;
+
 template <int q0>
 class Quiver {
     int** adj; // Jagged array enumerating the edges of the quiver. adj[i][e] encodes the eth edge with source vertex i. If (i--e-->j) is an edge from i to j, then adj[i][e] = j - i, so that i + adj[i][e] = j.
@@ -32,31 +34,48 @@ public:
     Quiver(int** data, int* rowData){
         adj = new int*[q0];
         rows = new int[q0];
-        index indices;
         std::cout << "constructing quiver\n";
+        int count = 0;
         for(int i = 0; i < q0; i++){
             rows[i] = rowData[i];
             std::cout<< "row "<<i<<" has length "<<rows[i]<<"\n";
             adj[i] = new int[rows[i]];
-            for(int j = 0; j < rowData[i]; j++){
-                indices[i+j] = std::pair<int,int>(i,j);
+            for(int j = 0; j < rows[i]; j++){
+                indices.insert({count,{i,j}});
+                std::cout << "index " << count << ": (" << i << "," << j << ").  ";  
+                count++;
                 adj[i][j] = data[i][j];
                 std::cout<<"adj position "<<i<<","<<j<<" value: "<<adj[i][j]<<"\n";
             }
         }
         E = indices.size();
+        std::cout << "number of edges: " << E << "\n";
         std::cout << "successfully constructed quiver from row and column data\n";
     }
 
     Quiver (int** data, int* rowData, index indData){
-        adj = data;
-        rows = rowData;
-        indices = indData;
+        adj = new int*[q0];
+        rows = new int[q0];
+        for(int i = 0; i < q0; i++){
+            rows[i] = rowData[i];
+            adj[i] = new int[rows[i]];
+            for(int j = 0; j < rows[i]; j++){
+                adj[i][j] = data[i][j];
+            }
+        }
+        index::iterator nind;
+        for(nind = indData.begin(); nind != indData.end(); ++nind){
+            indices.insert(*nind);
+        }
         E = indices.size();
     }
 
     int h(int i, int e){
         return i + adj[i][e];
+    }
+
+    int iterVal(index::iterator nind){
+        return adj[nind->first][h(nind->second.first,nind->second.second)];
     }
 
     void addEdge(int i, int diff){
@@ -79,6 +98,7 @@ public:
         std::pair<int,int> data = indices[ind];
         int i = data.first;
         int e = data.second;
+        std::cout << "data: "<< i << "," << e << "\n";
         assert((i < q0 && e < rows[i]) && "Edge index out of bounds!");
         int** newAdj = new int*[q0];
         int* newRows = new int[q0];
@@ -86,20 +106,33 @@ public:
             newRows[j]= (j == e) ? rows[j] - 1 : rows[j];
             newAdj[j] = new int[newRows[j]];
         }
-        index newIndices = indices;
+        index newIndices;
         int shift = 0;
-        for(int k = 0; k < q0; k++){
-            for (int j = 0; j < rows[k]; j++){
-                if(k == i && j == e){
-                    shift = 1;
+        // for(int k = 0; k < q0; k++){
+        //     for (int j = 0; j < rows[k]; j++){
+        //         if(k == i && j == e){
+        //             shift = 1;
+        //         }
+        //         if(k == i+1 && j == 0){
+        //             shift = 0;
+        //         }
+        //         newAdj[k][j] = adj[k][k+shift];
+
+        //     }
+        // }
+        for(auto nind = indices.begin(); nind != indices.end(); ++nind){
+            int k = nind->second.first;
+            int l = nind->second.second;
+            if(k != i || l != e){
+                if(k == i && l > e){
+                    newAdj[k][l-1] = adj[k][l];
+                    newIndices[nind->first] = {k,l-1};
+                } else {
+                    newAdj[k][l] = adj[k][l];
+                    newIndices[nind->first] = {k,l};
                 }
-                if(k == i+1 && j == 0){
-                    shift = 0;
-                }
-                newAdj[k][j] = adj[k][k+shift];
             }
         }
-        newIndices.erase(indices.find(ind));
         return Quiver<q0>(newAdj,newRows,newIndices);
     }
 
@@ -172,11 +205,14 @@ public:
     Eigen::Matrix<int,q0,q0> adjMatrix(){
         Eigen::Matrix<int,q0,q0> adjmat;
         adjmat.setZero();
+        std::cout << "Initialized adjacency matrix.\n";
         for(int k = 0; k < q0; k++){
             for(int l = 0; l < rows[k]; l++){
                 adjmat(k,h(k,l))++;
             }
+            std::cout << "Processed row "<<k << ". ";
         }
+        std::cout << "\n";
         return adjmat;
     }
 
@@ -185,9 +221,14 @@ public:
     }
 
     void printIndex(){
+        if(indices.empty()){
+            std::cout << "Index empty";
+            return;
+        }
         int count = 0;
         std::cout << "printing index:\n";
-        for(auto nind = indices.begin(); nind != indices.end(); ++nind){
+        index::iterator nind;
+        for(nind = indices.begin(); nind != indices.end(); ++nind){
             if(count == 4){
                 std::cout << "\n";
                 count = 0;
@@ -195,5 +236,6 @@ public:
             std::cout << nind->first << " : " << "(" << (nind->second).first << "," << (nind->second).second << ");  ";
             count++;
         }
+        std::cout << "\n";
     }
 };
