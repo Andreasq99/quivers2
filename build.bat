@@ -1,0 +1,1 @@
+g++ -std=c++23 main.cpp -o quiver -I C:/CPP_Packages/ -L C:/CPP_Packages/matplot -lmatplot
